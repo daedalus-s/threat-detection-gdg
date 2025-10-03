@@ -12,22 +12,32 @@ class VectorStore:
     """Store and retrieve temporal threat events using Pinecone"""
     
     def __init__(self):
-        self.pc = Pinecone(api_key=settings.pinecone_api_key)
-        self.index_name = settings.pinecone_index_name
-        self.index = None
-        self._initialize_index()
+        try:
+            # Use new Pinecone API (v3+)
+            self.pc = Pinecone(api_key=settings.pinecone_api_key)
+            self.index_name = settings.pinecone_index_name
+            self.index = None
+            self._initialize_index()
+        except Exception as e:
+            logger.error(f"Failed to initialize Pinecone: {e}")
+            logger.warning("Continuing without Pinecone - events will not be stored")
+            self.pc = None
+            self.index = None
     
     def _initialize_index(self):
         """Create or connect to Pinecone index"""
+        if not self.pc:
+            return
+            
         try:
             # Check if index exists
             existing_indexes = self.pc.list_indexes()
+            index_names = [idx.name for idx in existing_indexes]
             
-            if self.index_name not in [idx.name for idx in existing_indexes]:
+            if self.index_name not in index_names:
                 logger.info(f"Creating new Pinecone index: {self.index_name}")
                 
                 # Create index with appropriate dimensions
-                # Using 384 dimensions for sentence embeddings (can adjust)
                 self.pc.create_index(
                     name=self.index_name,
                     dimension=384,  # Adjust based on embedding model
@@ -38,6 +48,8 @@ class VectorStore:
                     )
                 )
                 logger.info(f"Index {self.index_name} created successfully")
+            else:
+                logger.info(f"Index {self.index_name} already exists")
             
             # Connect to index
             self.index = self.pc.Index(self.index_name)
@@ -45,7 +57,7 @@ class VectorStore:
             
         except Exception as e:
             logger.error(f"Failed to initialize Pinecone index: {e}")
-            # For demo, continue without Pinecone if it fails
+            logger.warning("Continuing without Pinecone - events will not be stored")
             self.index = None
     
     def store_event(self, alert: Dict[str, Any]) -> bool:
@@ -59,7 +71,7 @@ class VectorStore:
             True if successful, False otherwise
         """
         if not self.index:
-            logger.warning("Pinecone index not available, skipping storage")
+            logger.debug("Pinecone index not available, skipping storage")
             return False
         
         try:
@@ -67,20 +79,19 @@ class VectorStore:
             event_id = self._generate_event_id(alert)
             
             # Create a simple embedding (in production, use a real embedding model)
-            # For demo: use hash of description as "embedding"
             embedding = self._create_simple_embedding(alert)
             
             # Prepare metadata
             metadata = {
-                'alert_type': alert.get('alert_type', 'unknown'),
-                'severity': alert.get('severity', 'unknown'),
-                'description': alert.get('description', ''),
-                'timestamp': alert.get('timestamp', datetime.now().isoformat()),
-                'camera_id': alert.get('camera_id', 0),
-                'device_id': alert.get('device_id', ''),
-                'confidence': alert.get('confidence', 0.0),
-                'action_required': alert.get('action_required', ''),
-                'source': alert.get('source', 'unknown')
+                'alert_type': str(alert.get('alert_type', 'unknown')),
+                'severity': str(alert.get('severity', 'unknown')),
+                'description': str(alert.get('description', ''))[:500],  # Limit length
+                'timestamp': str(alert.get('timestamp', datetime.now().isoformat())),
+                'camera_id': int(alert.get('camera_id', 0)),
+                'device_id': str(alert.get('device_id', '')),
+                'confidence': float(alert.get('confidence', 0.0)),
+                'action_required': str(alert.get('action_required', '')),
+                'source': str(alert.get('source', 'unknown'))
             }
             
             # Upsert to Pinecone
@@ -94,7 +105,7 @@ class VectorStore:
                 ]
             )
             
-            logger.info(f"Event stored in Pinecone: {event_id}")
+            logger.debug(f"Event stored in Pinecone: {event_id}")
             return True
             
         except Exception as e:
@@ -117,7 +128,7 @@ class VectorStore:
             List of matching events
         """
         if not self.index:
-            logger.warning("Pinecone index not available")
+            logger.debug("Pinecone index not available")
             return []
         
         try:
@@ -146,7 +157,7 @@ class VectorStore:
                 }
                 events.append(event)
             
-            logger.info(f"Retrieved {len(events)} events from Pinecone")
+            logger.debug(f"Retrieved {len(events)} events from Pinecone")
             return events
             
         except Exception as e:
@@ -164,6 +175,9 @@ class VectorStore:
         Returns:
             List of recent events
         """
+        if not self.index:
+            return []
+            
         # Calculate timestamp threshold
         from datetime import timedelta
         threshold = datetime.now() - timedelta(minutes=minutes)
@@ -174,13 +188,11 @@ class VectorStore:
         if severity:
             filter_dict['severity'] = {'$eq': severity}
         
-        # Note: Pinecone doesn't support timestamp range queries directly
-        # For production, consider using a separate time-series database
-        # For demo, we'll query all and filter in memory
-        
+        # Query all and filter by timestamp in memory
+        # (Pinecone doesn't support timestamp range queries directly)
         all_events = self.query_events(top_k=100, filter_dict=filter_dict if filter_dict else None)
         
-        # Filter by timestamp in memory
+        # Filter by timestamp
         recent = [e for e in all_events if e.get('timestamp', '') >= threshold_str]
         
         return recent
@@ -212,7 +224,8 @@ class VectorStore:
         
         # Normalize
         magnitude = sum(x*x for x in embedding) ** 0.5
-        embedding = [x / magnitude for x in embedding]
+        if magnitude > 0:
+            embedding = [x / magnitude for x in embedding]
         
         return embedding
 
