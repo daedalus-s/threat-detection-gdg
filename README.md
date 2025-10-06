@@ -228,21 +228,6 @@ Access the dashboard at: **http://localhost:3000**
 - [ ] API keys configured correctly
 - [ ] Test alerts appearing on dashboard
 
-### Demo Flow (15-20 minutes)
-
-#### 1. Introduction (2 min)
-"This is an agentic AI system that uses Google's AI capabilities to detect threats in a home environment using multiple sensors and cameras."
-
-**Show**: Dashboard with all devices online
-
-#### 2. System Architecture (3 min)
-Explain the multi-agent architecture:
-- "We have 5 camera agents processing video feeds independently"
-- "Each agent uses Google's Gemini vision model for threat detection"
-- "A central orchestrator makes intelligent escalation decisions"
-- "All events are stored in Pinecone for historical analysis"
-
-**Show**: Terminal logs showing agents starting up
 
 #### 3. Normal Operations (2 min)
 "Under normal conditions, the system monitors continuously but generates no alerts."
@@ -296,13 +281,6 @@ Be prepared to answer:
 - "Can it scale?" → Yes, distributed architecture with Kafka
 - "Response time?" → Real-time processing, sub-second alerts
 
-### Demo Tips
-1. **Rehearse transitions** between scenarios
-2. **Have backup plans** if videos don't cooperate
-3. **Show terminal logs** - they're impressive
-4. **Emphasize the AI** - Google's Gemini doing the vision work
-5. **Highlight agentic behavior** - agents making autonomous decisions
-6. **Keep energy high** - this is exciting technology!
 
 ---
 

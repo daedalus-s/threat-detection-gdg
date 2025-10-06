@@ -1,7 +1,15 @@
-# Core Dependencies
-google-generativeai>=0.3.0  # Google AI Studio SDK
-pinecone-client>=2.2.0
+# Core ADK and AI dependencies
+google-adk>=1.15.1
+google-generativeai>=0.3.0
+google-cloud-aiplatform>=1.40.0
+
+# Vector database
+pinecone-client==2.2.4
+
+# Message queue (keeping Kafka for event streaming)
 kafka-python>=2.0.0
+
+# Video processing
 opencv-python>=4.8.0
 numpy>=1.24.0
 pillow>=10.0.0
@@ -18,15 +26,5 @@ pydantic>=2.0.0
 pydantic-settings>=2.0.0
 requests>=2.31.0
 
-# Data Processing (optional - not required for demo)
-# pandas>=2.1.0
-
 # Logging
 loguru>=0.7.0
-
-# CORS
-fastapi-cors>=0.0.6
-
-# Optional: For advanced features
-# schedule==1.2.0  # For scheduled tasks
-# asyncio==3.4.3  # Async support
